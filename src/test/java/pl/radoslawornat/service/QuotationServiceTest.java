@@ -14,6 +14,8 @@ import pl.radoslawornat.model.dto.QuotationDto;
 import pl.radoslawornat.model.exception.QuotationAlreadyExistsException;
 import pl.radoslawornat.model.exception.QuotationNotFoundException;
 import pl.radoslawornat.model.exception.QuotationServiceException;
+import pl.radoslawornat.model.mapper.QuotationMapper;
+import pl.radoslawornat.model.response.QuotationResource;
 import pl.radoslawornat.repository.QuotationRepository;
 import pl.radoslawornat.service.impl.QuotationServiceImpl;
 
@@ -29,21 +31,24 @@ class QuotationServiceTest {
     @Mock
     QuotationRepository quotationRepository;
 
+    QuotationMapper quotationMapper = new QuotationMapper();
+
     QuotationService quotationService;
 
     @BeforeEach
     void setup() {
-        quotationService = new QuotationServiceImpl(quotationRepository);
+        quotationService = new QuotationServiceImpl(quotationRepository, quotationMapper);
     }
 
     @Test
     void listAllQuotationsMethodShouldReturnCorrectPageOfQuotations() {
-        Page<Quotation> quotations = generateExamplePageOfBooks();
+        Page<Quotation> quotations = generateExamplePageOfQuotations();
         PageRequest pageRequest = PageRequest.of(0, 5);
         when(quotationRepository.findAll(pageRequest)).thenReturn(quotations);
 
-        Page<Quotation> result = quotationService.listAllQuotations(0, 5);
-        assertEquals(quotations, result);
+        Page<QuotationResource> result = quotationService.listAllQuotations(0, 5);
+        assertEquals(quotations.getTotalPages(), result.getTotalPages());
+        assertEquals(quotations.getTotalElements(), result.getTotalElements());
 
         verify(quotationRepository).findAll(pageRequest);
     }
@@ -53,13 +58,14 @@ class QuotationServiceTest {
         PageRequest pageRequest = PageRequest.of(0, 5);
         doThrow(new NonTransientDataAccessException(""){}).when(quotationRepository).findAll(pageRequest);
 
-        assertThrows(QuotationServiceException.class, () -> quotationService.listAllQuotations(0, 5));
+        assertThrows(QuotationServiceException.class,
+                () -> quotationService.listAllQuotations(0, 5));
 
         verify(quotationRepository).findAll(pageRequest);
     }
 
     @Test
-    void saveQuotationMethodShouldReturnQuotationWhenCorrectQuotationDtoPassed() {
+    void saveQuotationMethodShouldReturnQuotationResourceWhenCorrectQuotationDtoPassed() {
         String content = "Główną nauką płynącą z historii jest to, że ludzkość niczego się nie uczy.";
         Author author = new Author("Winston", "Churchill");
         QuotationDto quotationDto = new QuotationDto(content, author);
@@ -69,7 +75,7 @@ class QuotationServiceTest {
         )).thenReturn(Optional.empty());
         when(quotationRepository.save(any(Quotation.class))).thenReturn(expectedQuotation);
 
-        Quotation result = quotationService.saveQuotation(quotationDto, null);
+        QuotationResource result = quotationService.saveQuotation(quotationDto);
 
         assertEquals(expectedQuotation.getAuthor().getFirstName(), result.getAuthor().getFirstName());
         assertEquals(expectedQuotation.getAuthor().getLastName(), result.getAuthor().getLastName());
@@ -82,7 +88,7 @@ class QuotationServiceTest {
     }
 
     @Test
-    void saveQuotationMethodShouldUpdateExistingQuotationWhenCorrectIdIsPassed() {
+    void updateQuotationMethodShouldUpdateExistingQuotationWhenCorrectIdIsPassed() {
         String content = "Główną nauką płynącą z historii jest to, że ludzkość niczego się nie uczy.";
         Author author = new Author("Winston", "Churchill");
         QuotationDto quotationDto = new QuotationDto(content, author);
@@ -93,7 +99,7 @@ class QuotationServiceTest {
         when(quotationRepository.existsById(quotationId)).thenReturn(true);
         when(quotationRepository.save(any(Quotation.class))).thenReturn(quotation);
 
-        Quotation result = quotationService.saveQuotation(quotationDto, quotationId);
+        QuotationResource result = quotationService.updateQuotation(quotationDto, quotationId);
 
         assertEquals(quotationDto.getAuthor().getFirstName(), result.getAuthor().getFirstName());
         assertEquals(quotationDto.getAuthor().getLastName(), result.getAuthor().getLastName());
@@ -105,7 +111,7 @@ class QuotationServiceTest {
     }
 
     @Test
-    void saveQuotationMethodShouldThrowQuotationNotFoundExceptionWhenQuotationForPassedIdDoesNotExist() {
+    void updateQuotationMethodShouldThrowQuotationNotFoundExceptionWhenQuotationForPassedIdDoesNotExist() {
         String content = "Główną nauką płynącą z historii jest to, że ludzkość niczego się nie uczy.";
         Author author = new Author("Winston", "Churchill");
         QuotationDto quotationDto = new QuotationDto(content, author);
@@ -113,9 +119,20 @@ class QuotationServiceTest {
 
         when(quotationRepository.existsById(quotationId)).thenReturn(false);
 
-        assertThrows(QuotationNotFoundException.class, () -> quotationService.saveQuotation(quotationDto, quotationId));
+        assertThrows(QuotationNotFoundException.class,
+                () -> quotationService.updateQuotation(quotationDto, quotationId));
 
         verify(quotationRepository).existsById(quotationId);
+    }
+
+    @Test
+    void updateQuotationMethodShouldThrowQuotationServiceExceptionWhenQuotationWithNullIdIsPassed() {
+        String content = "Główną nauką płynącą z historii jest to, że ludzkość niczego się nie uczy.";
+        Author author = new Author("Winston", "Churchill");
+        QuotationDto quotationDto = new QuotationDto(content, author);
+
+        assertThrows(QuotationServiceException.class,
+                () -> quotationService.updateQuotation(quotationDto, null));;
     }
 
     @Test
@@ -129,7 +146,7 @@ class QuotationServiceTest {
                 content, author.getFirstName(), author.getLastName()
         )).thenReturn(Optional.of(existingQuotation));
 
-        assertThrows(QuotationAlreadyExistsException.class, ()-> quotationService.saveQuotation(quotationDto, null));
+        assertThrows(QuotationAlreadyExistsException.class, ()-> quotationService.saveQuotation(quotationDto));
 
         verify(quotationRepository).findByContentAndAuthor_FirstNameAndAuthor_LastNameIgnoreCase(
                 content, author.getFirstName(), author.getLastName()
@@ -146,11 +163,27 @@ class QuotationServiceTest {
         )).thenReturn(Optional.empty());
         doThrow(new NonTransientDataAccessException(""){}).when(quotationRepository).save(any(Quotation.class));
 
-        assertThrows(QuotationServiceException.class, () -> quotationService.saveQuotation(quotationDto, null));
+        assertThrows(QuotationServiceException.class, () -> quotationService.saveQuotation(quotationDto));
 
         verify(quotationRepository).findByContentAndAuthor_FirstNameAndAuthor_LastNameIgnoreCase(
                 content, author.getFirstName(), author.getLastName()
         );
+        verify(quotationRepository).save(any(Quotation.class));
+    }
+
+    @Test
+    void updateQuotationMethodShouldThrowQuotationServiceExceptionWhenNonTransientDataAccessExceptionOccurs() {
+        String content = "Główną nauką płynącą z historii jest to, że ludzkość niczego się nie uczy.";
+        Author author = new Author("Winston", "Churchill");
+        QuotationDto quotationDto = new QuotationDto(content, author);
+        String quotationId = "someQuotationId";
+        when(quotationRepository.existsById(quotationId)).thenReturn(true);
+        doThrow(new NonTransientDataAccessException(""){}).when(quotationRepository).save(any(Quotation.class));
+
+        assertThrows(QuotationServiceException.class,
+                () -> quotationService.updateQuotation(quotationDto, quotationId));
+
+        verify(quotationRepository).existsById(quotationId);
         verify(quotationRepository).save(any(Quotation.class));
     }
 

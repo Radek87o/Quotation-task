@@ -10,7 +10,8 @@ import java.util.UUID;
 public class CustomIdGenerator implements IdentifierGenerator {
 
     @Override
-    public Serializable generate(SharedSessionContractImplementor sharedSessionContractImplementor, Object o) throws HibernateException {
+    public Serializable generate(SharedSessionContractImplementor sharedSessionContractImplementor, Object o)
+            throws HibernateException {
         return UUID.randomUUID().toString();
     }
 }

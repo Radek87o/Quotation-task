@@ -19,5 +19,6 @@ public class Author {
     @NotBlank
     private String lastName;
 
-    public Author(){}
+    public Author() {
+    }
 }

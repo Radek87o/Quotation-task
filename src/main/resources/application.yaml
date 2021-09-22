@@ -19,3 +19,5 @@ server:
 
 quotations:
   default-size: 25
+  max-quotations-size: 1000
+  min-quotations-list-param-value: 0
