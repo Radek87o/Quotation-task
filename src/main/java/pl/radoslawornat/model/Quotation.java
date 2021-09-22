@@ -26,7 +26,7 @@ public class Quotation {
     private Author author;
 
     public Quotation(QuotationDto dto) {
-        this.content=dto.getContent();
-        this.author=dto.getAuthor();
+        this.content = dto.getContent();
+        this.author = dto.getAuthor();
     }
 }

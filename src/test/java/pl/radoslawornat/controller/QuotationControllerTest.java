@@ -14,9 +14,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import pl.radoslawornat.model.Author;
-import pl.radoslawornat.model.Quotation;
 import pl.radoslawornat.model.dto.QuotationDto;
 import pl.radoslawornat.model.response.CustomHttpResponse;
+import pl.radoslawornat.model.response.QuotationResource;
 import pl.radoslawornat.service.QuotationService;
 
 import java.util.stream.Stream;
@@ -43,7 +43,7 @@ class QuotationControllerTest {
 
     @Test
     void shouldFindAllQuotationsMethodReturnQuotationsPageWhenParamsOfPageAndSizeNotPassed() throws Exception {
-        Page<Quotation> quotations = generateExamplePageOfBooks();
+        Page<QuotationResource> quotations = generateExamplePageOfQuotationResources();
 
         when(quotationService.listAllQuotations(0, 25)).thenReturn(quotations);
 
@@ -60,7 +60,7 @@ class QuotationControllerTest {
 
     @Test
     void shouldFindAllQuotationsMethodReturnQuotationsPageWhenParamsPassed() throws Exception {
-        Page<Quotation> quotations = generateExamplePageOfBooks();
+        Page<QuotationResource> quotations = generateExamplePageOfQuotationResources();
 
         when(quotationService.listAllQuotations(0, 5)).thenReturn(quotations);
 
@@ -82,7 +82,8 @@ class QuotationControllerTest {
         String errorMessage = "Cannot retrieve more than 1000 quotations. Please pass the correct size";
 
         CustomHttpResponse httpResponse
-                = new CustomHttpResponse(400, BAD_REQUEST, BAD_REQUEST.getReasonPhrase().toUpperCase(), errorMessage);
+                = new CustomHttpResponse(
+                        400, BAD_REQUEST, BAD_REQUEST.getReasonPhrase().toUpperCase(), errorMessage);
 
         String url = "/api/quotations";
 
@@ -102,9 +103,9 @@ class QuotationControllerTest {
         String content = "Główną nauką płynącą z historii jest to, że ludzkość niczego się nie uczy.";
         Author author = new Author("Winston", "Churchill");
         QuotationDto quotationDto = new QuotationDto(content, author);
-        Quotation expectedQuotation = generateQuotationWithArgs(content, author);
+        QuotationResource expectedQuotation = generateQuotationResourceWithArgs(content, author);
 
-        when(quotationService.saveQuotation(any(QuotationDto.class), any())).thenReturn(expectedQuotation);
+        when(quotationService.saveQuotation(any(QuotationDto.class))).thenReturn(expectedQuotation);
 
         String url = "/api/quotations";
 
@@ -116,12 +117,12 @@ class QuotationControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().json(mapper.writeValueAsString(expectedQuotation)));
 
-        verify(quotationService).saveQuotation(any(QuotationDto.class), any());
+        verify(quotationService).saveQuotation(any(QuotationDto.class));
     }
 
     @ParameterizedTest
     @MethodSource("setOfInvalidQuotationDtos")
-    void shouldSaveBookMethodReturnBadRequestWhenBookDtoIsInvalid(QuotationDto quotationDto) throws Exception {
+    void shouldSaveQuotationMethodReturnBadRequestWhenQuotationDtoIsInvalid(QuotationDto quotationDto) throws Exception {
         String url = "/api/quotations";
 
         mockMvc.perform(post(url)
@@ -130,11 +131,11 @@ class QuotationControllerTest {
                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
 
-        verify(quotationService, never()).saveQuotation(quotationDto, null);
+        verify(quotationService, never()).saveQuotation(quotationDto);
     }
 
     @Test
-    void shouldSaveBookMethodReturnBadRequestWhenNullIsPassedInBody() throws Exception {
+    void shouldSaveQuotationMethodReturnBadRequestWhenNullIsPassedInBody() throws Exception {
         String url = "/api/quotations";
 
         mockMvc.perform(post(url)
@@ -143,7 +144,7 @@ class QuotationControllerTest {
                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
 
-        verify(quotationService, never()).saveQuotation(null, null);
+        verify(quotationService, never()).saveQuotation(null);
     }
 
     @Test
@@ -152,9 +153,9 @@ class QuotationControllerTest {
         Author author = new Author("Winston", "Churchill");
         QuotationDto quotationDto = new QuotationDto(content, author);
         String quotationId = "someQuotationId";
-        Quotation expectedQuotation = generateQuotationWithFixedId(quotationId, content, author);
+        QuotationResource expectedQuotation = generateQuotationResourceWithFixedId(quotationId, content, author);
 
-        when(quotationService.saveQuotation(any(QuotationDto.class), any())).thenReturn(expectedQuotation);
+        when(quotationService.updateQuotation(any(QuotationDto.class), any())).thenReturn(expectedQuotation);
 
         String url = "/api/quotations/"+quotationId;
 
@@ -166,12 +167,13 @@ class QuotationControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().json(mapper.writeValueAsString(expectedQuotation)));
 
-        verify(quotationService).saveQuotation(any(QuotationDto.class), any());
+        verify(quotationService).updateQuotation(any(QuotationDto.class), any());
     }
 
     @ParameterizedTest
     @MethodSource("setOfInvalidQuotationDtos")
-    void shouldUpdateBookMethodReturnBadRequestWhenBookDtoIsInvalid(QuotationDto quotationDto) throws Exception {
+    void shouldUpdateQuotationMethodReturnBadRequestWhenBookQuotationDtoIsInvalid(QuotationDto quotationDto)
+            throws Exception {
         String quotationId = "someQuotationId";
         String url = "/api/quotations/"+quotationId;
 
@@ -181,11 +183,11 @@ class QuotationControllerTest {
                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
 
-        verify(quotationService, never()).saveQuotation(quotationDto, quotationId);
+        verify(quotationService, never()).updateQuotation(quotationDto, quotationId);
     }
 
     @Test
-    void shouldUpdateBookMethodReturnBadRequestWhenNullIsPassedInBody() throws Exception {
+    void shouldUpdateQuotationMethodReturnBadRequestWhenNullIsPassedInBody() throws Exception {
         String quotationId = "someQuotationId";
         String url = "/api/quotations/"+quotationId;
 
@@ -195,7 +197,7 @@ class QuotationControllerTest {
                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
 
-        verify(quotationService, never()).saveQuotation(null, quotationId);
+        verify(quotationService, never()).updateQuotation(null, quotationId);
     }
 
     @Test

@@ -18,36 +18,39 @@ import java.util.Map;
 import java.util.Objects;
 
 import static org.springframework.http.HttpStatus.*;
-import static org.springframework.http.HttpStatus.METHOD_NOT_ALLOWED;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    public static final String METHOD_IS_NOT_ALLOWED = "This request method is not allowed on this endpoint. Please send a %s request";
+    public static final String METHOD_IS_NOT_ALLOWED =
+            "This request method is not allowed on this endpoint. Please send a %s request";
 
     @ExceptionHandler(value = QuotationAlreadyExistsException.class)
-    public ResponseEntity<CustomHttpResponse> quotationAlreadyExistsException(QuotationAlreadyExistsException exc){
+    public ResponseEntity<CustomHttpResponse> quotationAlreadyExistsException(QuotationAlreadyExistsException exc) {
         return createHttpResponse(BAD_REQUEST, exc.getMessage());
     }
 
     @ExceptionHandler(value = QuotationNotFoundException.class)
-    public ResponseEntity<CustomHttpResponse> quotationNotFoundException(QuotationNotFoundException exc){
+    public ResponseEntity<CustomHttpResponse> quotationNotFoundException(QuotationNotFoundException exc) {
         return createHttpResponse(NOT_FOUND, exc.getMessage());
     }
 
     @ExceptionHandler(value = Exception.class)
     public ResponseEntity<Object> handleUnexpectedException(Exception e, WebRequest request) {
         log.error("Handling {} due to {}", e.getClass().getSimpleName(), e.getMessage());
-        e.printStackTrace();
         return createJsonResponse(e, request);
     }
 
     @Override
-    protected ResponseEntity<Object> handleHttpRequestMethodNotSupported(HttpRequestMethodNotSupportedException exc, HttpHeaders headers, HttpStatus status, WebRequest request) {
+    protected ResponseEntity<Object> handleHttpRequestMethodNotSupported(HttpRequestMethodNotSupportedException exc,
+                                                                         HttpHeaders headers,
+                                                                         HttpStatus status,
+                                                                         WebRequest request) {
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpMethod httpSupportedMethod = Objects.requireNonNull(exc.getSupportedHttpMethods()).iterator().next();
-        ResponseEntity<CustomHttpResponse> httpResponse = createHttpResponse(METHOD_NOT_ALLOWED, String.format(METHOD_IS_NOT_ALLOWED, httpSupportedMethod.name()));
+        ResponseEntity<CustomHttpResponse> httpResponse =
+                createHttpResponse(METHOD_NOT_ALLOWED, String.format(METHOD_IS_NOT_ALLOWED, httpSupportedMethod.name()));
         return new ResponseEntity<>(httpResponse.getBody(), headers, METHOD_NOT_ALLOWED);
     }
 
@@ -55,7 +58,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private ResponseEntity<CustomHttpResponse> createHttpResponse(HttpStatus httpStatus, String message) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        CustomHttpResponse httpResponse = new CustomHttpResponse(httpStatus.value(), httpStatus, httpStatus.getReasonPhrase(), message);
+        CustomHttpResponse httpResponse =
+                new CustomHttpResponse(httpStatus.value(), httpStatus, httpStatus.getReasonPhrase(), message);
         return new ResponseEntity<>(httpResponse, headers, httpStatus);
     }
 
@@ -63,10 +67,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         if (e instanceof ResponseStatusException) {
-            return new ResponseEntity<>(createExceptionBody(((ResponseStatusException) e).getStatus(), ((ResponseStatusException) e).getReason(), request.getDescription(false)), headers, ((ResponseStatusException) e).getStatus());
+            Map<String, Object> exceptionBody = createExceptionBody(((ResponseStatusException) e).getStatus(),
+                    ((ResponseStatusException) e).getReason(),
+                    request.getDescription(false));
+            return new ResponseEntity<>(exceptionBody, headers, ((ResponseStatusException) e).getStatus());
         }
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
-        return new ResponseEntity<>(createExceptionBody(status, "An unexpected error occurred", request.getDescription(false)), headers, status);
+        Map<String, Object> unexpectedErrorBody =
+                createExceptionBody(status, "An unexpected error occurred", request.getDescription(false));
+        return new ResponseEntity<>(unexpectedErrorBody, headers, status);
     }
 
     private Map<String, Object> createExceptionBody(HttpStatus status, String message, String path) {

@@ -10,14 +10,14 @@ import java.util.Objects;
 public class ResponseHelper {
 
     public static ResponseEntity<?> createOkResponse(Object body) {
-        if(Objects.isNull(body)) {
+        if (Objects.isNull(body)) {
             throw new IllegalArgumentException("Response body cannot be null");
         }
         return createResponse(body, HttpStatus.OK);
     }
 
     public static ResponseEntity<?> createCreatedResponse(Object body) {
-        if(Objects.isNull(body)) {
+        if (Objects.isNull(body)) {
             throw new IllegalArgumentException("Response body cannot be null");
         }
         return createResponse(body, HttpStatus.CREATED);
